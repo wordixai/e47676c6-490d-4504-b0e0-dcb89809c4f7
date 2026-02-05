@@ -1,114 +1,129 @@
-# AI 食品卡路里分析应用 - 产品计划
+# AI 食品卡路里分析应用 - 实施计划
 
 ## 产品概述
 
-一款智能食品卡路里分析应用，用户通过上传或拍摄食物图片，AI自动识别食物种类并展示详细的卡路里和营养信息。
+**NutriScan AI** - 智能食品卡路里分析应用，用户上传食物图片，AI 自动识别并展示卡路里和营养信息，支持云端历史记录。
 
 ---
 
-## 核心产品功能
+## 核心功能
 
-### 1. 图片上传模块
-- 支持拖拽上传图片
-- 支持点击选择本地图片
-- 图片预览功能
-- 上传状态反馈
-
-### 2. AI 智能识别
-- 自动识别图片中的食物种类
-- 分析食物份量
-- 返回卡路里估算值
-- 提供主要营养成分（蛋白质、碳水、脂肪）
-
-### 3. 结果展示
-- 食物名称和图片展示
-- 卡路里数值突出显示
-- 营养成分可视化（进度条/环形图）
-- 健康建议提示
-
-### 4. 用户体验
-- 加载动画反馈
-- 错误处理提示
-- 响应式设计（支持移动端）
+1. **图片上传** - 拖拽/点击上传食物图片，支持预览
+2. **AI 智能分析** - 识别食物、估算卡路里和营养成分（蛋白质、碳水、脂肪）
+3. **结果可视化** - 卡路里圆环图 + 营养成分进度条
+4. **用户认证** - Supabase Auth 登录/注册
+5. **历史记录** - 云端保存分析记录，查看每日摄入汇总
 
 ---
 
 ## 设计方案
 
-### 配色主题（健康/自然风格）
-- **主色**：清新绿色 `hsl(142, 76%, 36%)` - 象征健康、自然
-- **辅助色**：浅绿色渐变背景
-- **强调色**：橙色用于卡路里数值 `hsl(25, 95%, 53%)`
-- **中性色**：柔和的灰色系
-
-### 视觉风格
-- 圆润的卡片设计
-- 柔和的阴影效果
-- 渐变背景营造层次感
-- 清晰的数据可视化
+**配色**：清新绿色主题
+- 主色：`hsl(142, 71%, 45%)` - 健康绿
+- 背景：`hsl(138, 76%, 97%)` - 极浅绿
+- 营养素颜色：蛋白质(蓝)、碳水(橙)、脂肪(紫)、纤维(绿)
 
 ---
 
-## 页面结构
+## 数据库表结构 (Supabase)
+
+```sql
+-- 1. 食物分析记录表
+CREATE TABLE food_analysis_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  image_url TEXT NOT NULL,
+  food_name TEXT NOT NULL,
+  calories DECIMAL(10, 2) NOT NULL,
+  protein DECIMAL(10, 2) NOT NULL,
+  carbohydrates DECIMAL(10, 2) NOT NULL,
+  fat DECIMAL(10, 2) NOT NULL,
+  fiber DECIMAL(10, 2),
+  serving_size TEXT,
+  health_tips TEXT,
+  analyzed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Storage bucket for food images
+INSERT INTO storage.buckets (id, name, public) VALUES ('food-images', 'food-images', true);
+```
+
+---
+
+## 需创建的文件
 
 ```
-首页 (Index.tsx)
-├── Header - 应用标题和描述
-├── ImageUploader - 图片上传区域组件
-├── AnalysisResult - 分析结果展示组件
-│   ├── FoodInfo - 食物信息卡片
-│   ├── CalorieDisplay - 卡路里展示
-│   └── NutritionChart - 营养成分图表
-└── Footer - 底部说明
+src/
+├── index.css                          # [修改] 绿色主题变量
+├── App.tsx                            # [修改] 添加路由
+├── pages/
+│   ├── Index.tsx                      # [重写] 首页-图片上传与分析
+│   └── History.tsx                    # [新建] 历史记录页
+├── components/
+│   ├── layout/
+│   │   └── Header.tsx                 # 顶部导航
+│   ├── auth/
+│   │   └── AuthModal.tsx              # 登录/注册弹窗
+│   └── food-analyzer/
+│       ├── ImageUploader.tsx          # 图片上传组件
+│       ├── AnalysisResult.tsx         # 分析结果展示
+│       ├── CalorieCircle.tsx          # 卡路里圆环图
+│       └── NutritionBar.tsx           # 营养成分进度条
+├── hooks/
+│   ├── useAuth.ts                     # 认证 hook
+│   └── useFoodAnalysis.ts             # 分析 hook
+├── lib/
+│   └── supabase.ts                    # Supabase 客户端
+└── types/
+    └── food.ts                        # 类型定义
+
+supabase/functions/
+└── analyze-food/index.ts              # AI 分析 Edge Function
 ```
-
----
-
-## 需要创建的文件
-
-1. `src/components/ImageUploader.tsx` - 图片上传组件
-2. `src/components/AnalysisResult.tsx` - 分析结果组件
-3. `src/components/NutritionChart.tsx` - 营养成分图表
-4. `src/hooks/useImageAnalysis.ts` - AI分析 Hook
-5. `src/pages/Index.tsx` - 更新首页
-
----
-
-## 技术集成需求
-
-**AI 图像识别**：需要使用 `ai-integration` skill 集成 AI 服务，用于：
-- 食物图像识别
-- 卡路里估算
-- 营养成分分析
-
----
-
-## 验证方案
-
-1. 上传一张食物图片（如：苹果、汉堡、沙拉）
-2. 验证 AI 返回正确的食物识别结果
-3. 检查卡路里和营养数据显示正确
-4. 测试响应式布局在移动端的表现
-5. 测试错误情况（非食物图片）的处理
 
 ---
 
 ## 实施步骤
 
 ### Step 1: 设计系统配置
-更新 `index.css` 和 `tailwind.config.ts`，定义健康主题配色
+- 更新 `index.css` 添加绿色主题变量
+- 定义营养素颜色变量
 
-### Step 2: 创建图片上传组件
-实现拖拽上传、预览功能
+### Step 2: 集成 Supabase
+- 使用 `supabase-integration` skill
+- 创建数据库表和 Storage bucket
+- 配置认证
 
 ### Step 3: 集成 AI 服务
-使用 ai-integration skill 配置食物识别 AI
+- 使用 `ai-integration` skill
+- 创建 `analyze-food` Edge Function
+- 配置食物识别 prompt
 
-### Step 4: 创建结果展示组件
-设计美观的卡路里和营养信息展示
+### Step 4: 创建核心组件
+- ImageUploader (拖拽上传)
+- AnalysisResult (结果展示)
+- CalorieCircle (卡路里圆环)
+- NutritionBar (营养进度条)
 
-### Step 5: 整合首页
-将所有组件整合到 Index.tsx
+### Step 5: 实现首页
+- 整合上传和分析组件
+- 添加加载状态和错误处理
 
-### Step 6: 测试验证
-端到端测试完整流程
+### Step 6: 实现认证
+- AuthModal 登录/注册弹窗
+- Header 用户状态显示
+
+### Step 7: 实现历史记录
+- History 页面
+- 历史记录列表和每日汇总
+
+---
+
+## 验证方案
+
+1. ✅ 上传一张食物图片（如苹果、汉堡）
+2. ✅ 验证 AI 返回正确的食物识别结果
+3. ✅ 检查卡路里和营养数据显示
+4. ✅ 登录后保存记录到云端
+5. ✅ 在历史页面查看保存的记录
+6. ✅ 测试移动端响应式布局
